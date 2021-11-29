@@ -64,7 +64,8 @@ public class CocktailService {
             senderService.sendMessage(
                     requestBuilder.buildRequestForQuickReply(user,
                             buildQuickReplyListWrongInput(new PostbackQuickReply(TRY_AGAIN_MESSAGE, PostbackPayload.FIND_COCKTAIL_BY_NAME)),
-                            String.format(WRONG_COCKTAIL_NAME, cocktailName)), user);
+                            String.format(WRONG_COCKTAIL_NAME, cocktailName)),
+                    user);
     }
 
     public void getCocktailByFirstLetter(User user, String letter, Integer loop) {
