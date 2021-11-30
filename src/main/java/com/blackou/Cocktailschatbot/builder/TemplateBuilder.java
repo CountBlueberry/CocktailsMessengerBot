@@ -3,6 +3,7 @@ package com.blackou.Cocktailschatbot.builder;
 import com.blackou.Cocktailschatbot.constant.PostbackPayload;
 import com.blackou.Cocktailschatbot.constant.UrlParameters;
 import com.blackou.Cocktailschatbot.entity.Cocktail;
+import com.blackou.Cocktailschatbot.entity.CocktailUser;
 import com.blackou.Cocktailschatbot.entity.User;
 import com.blackou.Cocktailschatbot.repository.CocktailRepo;
 import com.blackou.Cocktailschatbot.repository.CocktailUserRepo;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -71,7 +73,8 @@ public class TemplateBuilder {
 
     public TemplateElement checkIfCocktailInFavoriteWithButton(User user, Cocktail cocktail, Button button){
         Cocktail cocktailFromDb = cocktailRepo.findByStrDrink(cocktail.getStrDrink());
-        if(cocktailUserRepo.findByUser(user).getCocktails().contains(cocktailFromDb)){
+        Optional<CocktailUser> cocktailUserOpt = cocktailUserRepo.findByUser(user);
+        if(cocktailUserOpt.isPresent() && cocktailUserOpt.get().getCocktails().contains(cocktailFromDb)){
             return buildCocktailTemplateWithButtonRemove(cocktail,button);
         }else{
             return buildCocktailTemplateWithButtonAdd(cocktail,button);
@@ -80,7 +83,8 @@ public class TemplateBuilder {
 
     public TemplateElement checkIfCocktailInFavorite(User user, Cocktail cocktail){
         Cocktail cocktailFromDb = cocktailRepo.findByStrDrink(cocktail.getStrDrink());
-        if(cocktailUserRepo.findByUser(user).getCocktails().contains(cocktailFromDb)){
+        Optional<CocktailUser> cocktailUserOpt = cocktailUserRepo.findByUser(user);
+        if(cocktailUserOpt.isPresent() && cocktailUserOpt.get().getCocktails().contains(cocktailFromDb)){
             return buildCocktailTemplateRemove(cocktail);
         }else{
             return buildCocktailTemplateAdd(cocktail);

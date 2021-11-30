@@ -33,6 +33,7 @@ public class CocktailService {
     private static final String REMOVE_COCKTAIL_FROM_FAVORITE_MESSAGE = "Cocktail %s removed from your favorite cocktails";
     private static final String ANOTHER_ONE_MESSAGE = "Get me another one.";
     private static final String MENU_MESSAGE = "Back to menu.";
+    private static final String NOTHING_IN_FAVORITE_MESSAGE = "Sorry but you don't have any favorite cocktail.";
 
     private final CocktailAPIClient cocktailAPIClient;
     private final SenderService senderService;
@@ -149,10 +150,14 @@ public class CocktailService {
     public void addCocktailToFavorite(User user, String cocktailName) {
         Cocktail cocktail = cocktailAPIClient.getCocktailByName(cocktailName).getCocktailList().get(0);
         saveCocktailToDb(cocktail);
-        CocktailUser cocktailUser = cocktailUserRepo.findByUser(user);
-        if (cocktailUser == null) {
+        CocktailUser cocktailUser;
+        Optional<CocktailUser> cocktailUserOpt = cocktailUserRepo.findByUser(user);
+        if (cocktailUserOpt.isPresent()) {
+            cocktailUser = cocktailUserOpt.get();
+        } else {
             cocktailUser = new CocktailUser();
             cocktailUser.setUser(user);
+            cocktailUserRepo.save(cocktailUser);
         }
         Set<Cocktail> cocktailSet = new HashSet<>();
         if (cocktailUser.getCocktails() != null) {
@@ -178,7 +183,14 @@ public class CocktailService {
 
     public void removeCocktailFromFavorite(User user, String cocktailName) {
         Cocktail cocktail = cocktailRepo.findByStrDrink(cocktailName);
-        CocktailUser cocktailUser = cocktailUserRepo.findByUser(user);
+        CocktailUser cocktailUser;
+        Optional<CocktailUser> cocktailUserOpt = cocktailUserRepo.findByUser(user);
+        if(cocktailUserOpt.isPresent()){
+            cocktailUser = cocktailUserOpt.get();
+        }else{
+            cocktailUser = new CocktailUser();
+            cocktailUser.setUser(user);
+        }
         Set<Cocktail> cocktails = cocktailUser.getCocktails();
         cocktails.remove(cocktail);
         cocktailUserRepo.delete(cocktailUser);
@@ -195,22 +207,30 @@ public class CocktailService {
     }
 
     public void showFavoriteCocktails(User user, Integer loop) {
-        Set<Cocktail> cocktailSet = new HashSet<>(cocktailUserRepo.findByUser(user).getCocktails());
-        List<TemplateElement> templateElementList = new ArrayList<>();
-        cocktailSet.forEach(cocktail -> {
-            if ((templateElementList.size() + 1) % 10 == 0) {
-                templateElementList.add(templateBuilder.buildCocktailTemplateWithButtonRemove(
-                        cocktail,
-                        new PostbackButton(NEXT_PACK_MESSAGE, PostbackPayload.NEXT_FAVORITE + UrlParameters.LOOP_PARAM + (templateElementList.size() + 1))));
+        Optional<CocktailUser> cocktailUserOpt = cocktailUserRepo.findByUser(user);
+        if (cocktailUserOpt.isPresent() && cocktailUserOpt.get().getCocktails() != null && cocktailUserOpt.get().getCocktails().size() > 0) {
+            Set<Cocktail> cocktailSet = new HashSet<>(cocktailUserOpt.get().getCocktails());
+            List<TemplateElement> templateElementList = new ArrayList<>();
+            cocktailSet.forEach(cocktail -> {
+                if ((templateElementList.size() + 1) % 10 == 0) {
+                    templateElementList.add(templateBuilder.buildCocktailTemplateWithButtonRemove(
+                            cocktail,
+                            new PostbackButton(NEXT_PACK_MESSAGE, PostbackPayload.NEXT_FAVORITE + UrlParameters.LOOP_PARAM + (templateElementList.size() + 1))));
+                } else {
+                    templateElementList.add(templateBuilder.buildCocktailTemplateRemove(cocktail));
+                }
+            });
+            if (templateElementList.size() < loop + 10) {
+                senderService.sendMessage(requestBuilder.buildRequestForTemplate(user, templateElementList.subList(loop, templateElementList.size()), buildQuickReplyList()), user);
             } else {
-                templateElementList.add(templateBuilder.buildCocktailTemplateRemove(cocktail));
+                senderService.sendMessage(requestBuilder.buildRequestForTemplate(user, templateElementList.subList(loop, loop + 10), buildQuickReplyList()), user);
             }
-        });
-        if (templateElementList.size() < loop + 10) {
-            senderService.sendMessage(requestBuilder.buildRequestForTemplate(user, templateElementList.subList(loop, templateElementList.size()), buildQuickReplyList()), user);
-        } else {
-            senderService.sendMessage(requestBuilder.buildRequestForTemplate(user, templateElementList.subList(loop, loop + 10), buildQuickReplyList()), user);
-        }
+        }else
+            senderService.sendMessage(
+                    requestBuilder.buildTextRequestWithQuickReply(
+                            user,
+                            new PostbackQuickReply(MENU_MESSAGE, PostbackPayload.MENU),
+                            NOTHING_IN_FAVORITE_MESSAGE), user);
     }
 
     private List<QuickReply> buildQuickReplyList() {
