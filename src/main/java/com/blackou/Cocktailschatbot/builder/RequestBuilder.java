@@ -58,4 +58,12 @@ public class RequestBuilder {
                 .build();
     }
 
+    public Request buildTextRequestWithQuickReply(MessengerUser user,QuickReply quickReply, String text) {
+        return QuickReplies.builder()
+                .user(user)
+                .text(text)
+                .addQuickReply(quickReply)
+                .build();
+    }
+
 }
